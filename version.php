@@ -11,7 +11,8 @@ declare(strict_types=1);
 // between betas, final and RCs. This is _not_ the public version number. Reset minor/patch level
 // when updating major/minor version number.
 
-$OC_Version = [34, 0, 3, 2];
+// Четвёртая цифра — номер сборки xcloud, а не апстрима: см. bump-version.sh
+$OC_Version = [34, 0, 3, 1000];
 
 // The human-readable string
 $OC_VersionString = '34.0.3';
