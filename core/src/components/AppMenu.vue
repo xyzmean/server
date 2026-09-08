@@ -123,6 +123,25 @@ const HOVER_CLOSE_DELAY = 180
 // Ignore a trigger click this long after a hover-open, so it does not close again.
 const HOVER_CLICK_GRACE = 500
 
+/**
+ * Read a hover delay in milliseconds from the current URL, for tuning the
+ * timings without a rebuild: ?hoverOpenDelay=90&hoverCloseDelay=180&hoverClickGrace=500
+ *
+ * Read on every use, so history.replaceState() in the console takes effect
+ * without a reload. Anything that is not a non-negative number is ignored.
+ *
+ * @param param name of the query parameter
+ * @param fallback value used when the parameter is absent or invalid
+ */
+function hoverDelay(param: string, fallback: number): number {
+	const raw = new URLSearchParams(window.location.search).get(param)
+	if (raw === null || raw.trim() === '') {
+		return fallback
+	}
+	const value = Number(raw)
+	return Number.isFinite(value) && value >= 0 ? value : fallback
+}
+
 export default defineComponent({
 	name: 'AppMenu',
 
@@ -357,8 +376,8 @@ export default defineComponent({
 				this.suppressClickTimer = setTimeout(() => {
 					this.suppressClickTimer = null
 					this.suppressCloseClick = false
-				}, HOVER_CLICK_GRACE)
-			}, HOVER_OPEN_DELAY)
+				}, hoverDelay('hoverClickGrace', HOVER_CLICK_GRACE))
+			}, hoverDelay('hoverOpenDelay', HOVER_OPEN_DELAY))
 		},
 
 		// Only real pointers open on hover: on touch a tap fires mouseenter too, and
@@ -384,7 +403,7 @@ export default defineComponent({
 			this.closeTimer = setTimeout(() => {
 				this.closeTimer = null
 				this.opened = false
-			}, HOVER_CLOSE_DELAY)
+			}, hoverDelay('hoverCloseDelay', HOVER_CLOSE_DELAY))
 		},
 
 		clearOpenTimer() {
