@@ -10,8 +10,9 @@
  *
  * Replaces the header app menu on desktop widths: every app is one always-labelled
  * target, so localized names (Russian in particular) never ellipsize the way they
- * do in the fixed-width header slot. The header keeps search, notifications and the
- * user menu; only the app switcher moves out of it.
+ * do in the fixed-width header slot. The home link and the account menu move down
+ * here with it (AppRail relocates the nodes themselves, see the component); the
+ * header keeps unified search, notifications and the contacts menu.
  */
 
 :root {
@@ -26,8 +27,10 @@
 	width: var(--app-rail-width);
 	display: flex;
 	flex-direction: column;
+	align-items: center;
 	background-color: var(--color-background-darker);
-	border-inline-end: 1px solid var(--color-border);
+	// --color-border sits well above the crust tone and reads as a stripe of light.
+	border-inline-end: 1px solid var(--color-background-dark);
 	overflow-y: auto;
 	overflow-x: hidden;
 	// A visible scrollbar inside 76px eats the labels; the rail scrolls by wheel/touch.
@@ -39,13 +42,39 @@
 }
 
 .app-rail {
-	padding-block: 10px;
+	padding-block: 12px 10px;
+	// Avatar (36px) plus the ring the render draws around it.
+	--app-rail-avatar-box: 44px;
 
 	&__list {
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: 2px;
+		flex-shrink: 0;
+		gap: 4px;
+	}
+
+	// Pushes the settings entry and the avatar to the bottom of the rail. It is
+	// the first thing to give way when the app list is taller than the viewport.
+	&__spacer {
+		flex: 1 1 auto;
+		min-height: 8px;
+	}
+
+	&__logo,
+	&__user {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		flex-shrink: 0;
+	}
+
+	&__logo {
+		margin-block-end: 12px;
+	}
+
+	&__user {
+		margin-block-start: 4px;
 	}
 
 	&__link {
@@ -71,7 +100,9 @@
 		}
 
 		&--active {
-			background-color: var(--color-primary-element-light);
+			// A flat --color-primary-element-light reads as a second accent block;
+			// the design calls for a tint of the accent itself.
+			background-color: rgba(var(--color-primary-element-rgb), .14);
 
 			// Flush marker at the very edge of the rail: the item is 60px inside a
 			// 76px rail, so -8px lands it exactly on the viewport edge.
@@ -88,11 +119,27 @@
 
 			.app-rail__label {
 				font-weight: 600;
-				color: var(--color-main-text);
+				color: var(--color-primary-element);
 			}
 
 			.app-rail__icon {
 				opacity: 1;
+			}
+		}
+
+		// The settings entry has no visible label — the render shows a bare cog —
+		// so it drops the row that the label would have occupied.
+		&--compact {
+			flex-shrink: 0;
+			padding-block: 9px;
+			gap: 0;
+
+			// Settings and action icons ship as DARK glyphs, the opposite of the
+			// white app icons above, so they need the opposite inversion — the
+			// same one AccountMenuEntry applies to the very same set of icons.
+			// Two classes deep on purpose: it has to outweigh .app-rail__icon.
+			.app-rail__icon {
+				filter: var(--background-invert-if-dark);
 			}
 		}
 	}
@@ -107,10 +154,15 @@
 	&__icon {
 		width: 23px;
 		height: 23px;
-		// App icons ship as dark glyphs; invert them on dark themes the same way
-		// the app navigation does, instead of hardcoding a colour.
-		filter: var(--background-invert-if-dark);
-		opacity: .8;
+		// Nextcloud 34 ships app icons as WHITE glyphs, so they need inverting on
+		// LIGHT themes, not dark ones. --background-invert-if-bright is
+		// invert(100%) on light themes and the keyword `no` on dark ones; `no` is
+		// not a valid filter, so the declaration falls back to the initial value
+		// `none` — which is exactly the wanted behaviour on dark. Do not add a
+		// second filter declaration before this one, or the invalid case would
+		// keep that one in force instead.
+		filter: var(--background-invert-if-bright);
+		opacity: .62;
 	}
 
 	&__badge {
@@ -123,28 +175,121 @@
 		border: 2px solid var(--color-background-darker);
 		border-radius: 9px;
 		background-color: var(--color-error);
-		color: var(--color-primary-element-light);
+		// The page background is the one tone guaranteed to contrast with the
+		// error fill in both palettes; --color-primary-element-light is a dark
+		// blue in Mocha and unreadable on red.
+		color: var(--color-main-background);
 		font-size: 10px;
 		font-weight: bold;
 		line-height: 13px;
 		text-align: center;
-		// Two digits plus the border must stay inside the 60px item, otherwise the
-		// badge hangs off the highlighted tile.
+		// The badge must stay inside the 60px item, otherwise it hangs off the
+		// corner of the highlighted tile. It is anchored by its end edge, so it
+		// grows towards the middle: measured against the tile's box (x 8…68) the
+		// badge spans 25.6…51.5 at two digits and 17.2…51.5 at «99+», and its top
+		// edge (y +2 from the tile) is inside as well.
 		box-sizing: border-box;
 	}
 
 	&__label {
-		max-width: 100%;
+		// Deliberately NOT clipped: an ellipsised app name is the exact defect the
+		// rail exists to remove. The label is allowed the full rail width and a
+		// second line, so «Календарь» and «Конференции» both read in full.
+		width: 72px;
 		padding-inline: 2px;
-		overflow: hidden;
-		color: var(--color-text-maxcontrast);
+		// --color-text-maxcontrast is derived against --color-main-background; on
+		// the rail's --color-background-darker it drops to 4.03:1 in Latte, below
+		// AA. --color-text-light is tuned light enough for both palettes.
+		color: var(--color-text-light);
 		font-size: 10.5px;
 		font-weight: 500;
 		letter-spacing: -.1px;
-		line-height: 1.2;
+		line-height: 1.15;
 		text-align: center;
-		text-overflow: ellipsis;
-		white-space: nowrap;
+		overflow-wrap: anywhere;
+	}
+}
+
+/**
+ * Two header nodes are moved into the rail by AppRail rather than copied: the
+ * home link (#nextcloud) and the mounted user menu (#user-menu). Everything the
+ * header gave them is scoped under #header, so inside the rail they arrive
+ * unstyled and are dressed here.
+ */
+
+#app-rail #nextcloud {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 40px;
+	height: 40px;
+	border-radius: 12px;
+	// The render fills the tile with a gradient of the accent; these two stops
+	// are the only accent pair every theme is guaranteed to define.
+	background-image: linear-gradient(140deg, var(--color-primary-element), var(--color-primary-element-hover));
+
+	&:focus-visible {
+		outline: 2px solid var(--color-main-text);
+		outline-offset: 2px;
+	}
+
+	.logo {
+		width: 24px;
+		height: 24px;
+		background-image: var(--image-logoheader, var(--image-logo, url('../img/logo/logo.svg')));
+		background-repeat: no-repeat;
+		background-position: center;
+		background-size: contain;
+		// Same idiom as #header .logo, but against the accent instead of the page
+		// background: the shipped logo is a white glyph and has to flip on a
+		// bright accent, while an uploaded one must be left alone —
+		// --image-logoheader-custom is the string `true`, not a valid filter, so
+		// that declaration is dropped and no inversion happens.
+		filter: var(--image-logoheader-custom, var(--primary-invert-if-bright));
+	}
+}
+
+#app-rail #user-menu {
+	// NcHeaderMenu sizes its trigger off --header-height; in the rail the trigger
+	// is the avatar plus its ring, nothing more.
+	&.header-menu {
+		width: var(--app-rail-avatar-box);
+		height: var(--app-rail-avatar-box);
+	}
+
+	.header-menu__trigger {
+		// The upstream declaration is !important, so this one has to be as well.
+		--button-size: var(--app-rail-avatar-box) !important;
+		width: var(--app-rail-avatar-box);
+		min-width: var(--app-rail-avatar-box);
+		height: var(--app-rail-avatar-box);
+	}
+
+	.account-menu__avatar {
+		// NcAvatar writes --avatar-size inline, so !important is the only lever.
+		--avatar-size: 36px !important;
+		// AccountMenu takes the avatar out of flow, which only works because the
+		// header trigger has a size of its own; here the trigger is the avatar.
+		position: static;
+		// The ring of the render: a gap in the rail's own tone, then the ring.
+		// Deliberately not tinted by user status — the honest status is the badge
+		// NcAvatar itself draws, which is the only value this stylesheet knows.
+		box-shadow: 0 0 0 2px var(--color-background-darker), 0 0 0 4px var(--color-border);
+		outline: none;
+	}
+
+	// The dropdown is fixed below the top-right corner, where the header menu
+	// used to be; beside the trigger is the only place it still makes sense.
+	.header-menu__wrapper {
+		top: auto;
+		inset-block-end: 8px;
+		inset-inline-start: var(--app-rail-width);
+		inset-inline-end: auto;
+	}
+
+	// The caret points up at a trigger that is no longer above it.
+	.header-menu__caret {
+		display: none;
 	}
 }
 
@@ -161,8 +306,23 @@
 	width: calc(100% - var(--app-rail-width));
 }
 
-#content {
+// Both ids are needed, but only as a DIRECT CHILD of body. The template renders
+// #content; some apps (Files, Deck, Photos) let Vue replace that node with
+// #content-vue, while others (Talk, Calendar, Tasks) keep #content and mount
+// #content-vue inside it. Matching both ids unqualified shifts the nested pair
+// twice — 168px instead of 84 — so the child combinator is what makes this
+// correct for both shapes.
+body > #content,
+body > #content-vue {
 	margin-inline-start: calc(var(--body-container-margin) + var(--app-rail-width));
+	width: calc(100% - var(--body-container-margin) * 2 - var(--app-rail-width));
+}
+
+// Talk, Calendar and Tasks keep #content and mount #content-vue inside it. That
+// inner node is position:fixed and sizes itself off the viewport, so it needs
+// the rail subtracted from its width even though its inset is already right.
+// Width only — adding the margin here would shift it a second time.
+body #content-vue {
 	width: calc(100% - var(--body-container-margin) * 2 - var(--app-rail-width));
 }
 
@@ -174,6 +334,10 @@
 
 	#app-rail {
 		display: none;
+	}
+
+	body #content-vue {
+		width: calc(100% - var(--body-container-margin) * 2);
 	}
 
 	#header .app-menu {
