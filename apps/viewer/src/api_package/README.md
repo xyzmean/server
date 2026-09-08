@@ -156,10 +156,10 @@ import { getViewer } from '@nextcloud/viewer'
 const viewer = getViewer()
 
 // Open a list of files, optionally starting on a specific file and forcing a
-// specific handler by its id.
+// specific handler by its id. Next and previous follow the order of this list.
 await viewer.open(files, files[0], options, 'my-app')
 
-// Open every viewable file of a folder.
+// Open every viewable file of a folder, ordered by name like the files list.
 await viewer.openFolder(folder, file, options, 'my-app')
 
 // Open two files side by side for comparison.
@@ -171,6 +171,19 @@ Signatures:
 - `open(nodes: File[], file?: File, options?: ViewerOptions, handlerId?: string): Promise<void>`
 - `openFolder(folder: Folder, file?: File, options?: ViewerOptions, handlerId?: string): Promise<void>`
 - `compare(node1: File, node2: File, handlerId?: string): Promise<void>`
+
+#### Ordering
+
+The viewer never reorders a list you give it. `open()` steps through `nodes` in
+the order you pass them, so a list taken from the files list is stepped through
+in whatever order the user has it sorted, including a sort the viewer knows
+nothing about. Pass the list you are showing, not a list you have re-sorted.
+
+`openFolder()` is the exception, because it fetches the folder itself and a
+WebDAV reply has no order worth relying on. It sorts by name ascending, using
+the same helper the files list sorts with, which is what that list shows before
+anyone changes the sorting. There is no files list in that path to take an
+active sort from, so pass your own list to `open()` if the order matters.
 
 `ViewerOptions` lets you hook into navigation and paging:
 
