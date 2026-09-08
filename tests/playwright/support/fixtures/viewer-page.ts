@@ -32,6 +32,7 @@ export function mediaFixturePath(name: string): string {
  * @param fixture - The fixture file name to read from `e2e/viewer/fixtures`
  * @param remoteName - The remote name/path relative to the user root (defaults to the fixture name)
  * @param mimeType - The content type sent with the upload
+ * @param mtime - Modification time in seconds, to control the sort order
  */
 export async function uploadMediaFile(
 	request: APIRequestContext,
@@ -39,16 +40,17 @@ export async function uploadMediaFile(
 	fixture: string,
 	remoteName: string = fixture,
 	mimeType: string = 'application/octet-stream',
+	mtime?: number,
 ): Promise<void> {
 	const path = remoteName.startsWith('/') ? remoteName : `/${remoteName}`
-	await uploadContent(request, user, readFileSync(mediaFixturePath(fixture)), mimeType, path)
+	await uploadContent(request, user, readFileSync(mediaFixturePath(fixture)), mimeType, path, mtime)
 }
 
 interface ViewerFixtures {
 	/** Page object for the viewer modal. */
 	viewerPage: ViewerPage
 	/** Upload a bundled media fixture to the logged-in user's root. */
-	uploadMedia: (fixture: string, remoteName?: string, mimeType?: string) => Promise<void>
+	uploadMedia: (fixture: string, remoteName?: string, mimeType?: string, mtime?: number) => Promise<void>
 	/** Open a file (or folder) by clicking its name link, triggering its default action. */
 	openFile: (name: string) => Promise<void>
 }
@@ -63,7 +65,7 @@ export const test = mergeTests(filesTest).extend<ViewerFixtures>({
 	},
 
 	uploadMedia: async ({ page, user }, use) => {
-		await use((fixture, remoteName, mimeType) => uploadMediaFile(page.request, user, fixture, remoteName, mimeType))
+		await use((fixture, remoteName, mimeType, mtime) => uploadMediaFile(page.request, user, fixture, remoteName, mimeType, mtime))
 	},
 
 	openFile: async ({ filesListPage }, use) => {
