@@ -23,7 +23,6 @@ class ComposerStaticInitViewer
     public static $classMap = array (
         'Composer\\InstalledVersions' => __DIR__ . '/..' . '/composer/InstalledVersions.php',
         'OCA\\Viewer\\AppInfo\\Application' => __DIR__ . '/..' . '/../lib/AppInfo/Application.php',
-        'OCA\\Viewer\\Event\\LoadViewer' => __DIR__ . '/..' . '/../lib/Event/LoadViewer.php',
         'OCA\\Viewer\\Listener\\LoadViewerScript' => __DIR__ . '/..' . '/../lib/Listener/LoadViewerScript.php',
     );
 
