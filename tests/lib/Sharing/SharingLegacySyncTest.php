@@ -11,11 +11,16 @@ namespace Test\Sharing;
 
 use DateTime;
 use DateTimeImmutable;
+use NCU\Sharing\Event\SharesUpdatedEvent;
+use NCU\Sharing\ISharingBackend;
 use NCU\Sharing\ISharingManager;
+use NCU\Sharing\ISharingRegistry;
 use NCU\Sharing\Permission\SharePermission;
 use NCU\Sharing\Recipient\ShareRecipient;
+use NCU\Sharing\Share;
 use NCU\Sharing\ShareAccessContext;
 use NCU\Sharing\ShareState;
+use NCU\Sharing\ShareUser;
 use NCU\Sharing\Source\ShareSource;
 use OC\Core\Sharing\Recipient\UserShareRecipientType;
 use OC\Share20\ShareAttributes;
@@ -25,6 +30,7 @@ use OCA\Files\Sharing\Permission\NodeDownloadSharePermissionType;
 use OCA\Files\Sharing\Permission\NodeReadSharePermissionType;
 use OCA\Files\Sharing\Source\NodeShareSourceType;
 use OCP\Constants;
+use OCP\EventDispatcher\IEventDispatcher;
 use OCP\Files\File;
 use OCP\Files\Folder;
 use OCP\Files\IRootFolder;
@@ -35,6 +41,7 @@ use OCP\IUserManager;
 use OCP\Server;
 use OCP\Share\IManager;
 use OCP\Share\IShare;
+use OCP\Snowflake\ISnowflakeGenerator;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
 use Test\TestCase;
@@ -55,11 +62,19 @@ final class SharingLegacySyncTest extends TestCase {
 
 	private SharingLegacySync $legacySync;
 
+	private ISharingRegistry $sharingRegistry;
+
+	private ISharingBackend $sharingBackend;
+
 	private ISharingManager $sharingManager;
 
 	private IManager $legacySharingManager;
 
 	private IDBConnection $dbConnection;
+
+	private ISnowflakeGenerator $snowflakeGenerator;
+
+	private IEventDispatcher $eventDispatcher;
 
 	private IUser $owner;
 
@@ -82,9 +97,13 @@ final class SharingLegacySyncTest extends TestCase {
 		$this->rootFolder = Server::get(IRootFolder::class);
 		$this->userManager = Server::get(IUserManager::class);
 		$this->legacySync = Server::get(SharingLegacySync::class);
+		$this->sharingRegistry = Server::get(ISharingRegistry::class);
+		$this->sharingBackend = Server::get(ISharingBackend::class);
 		$this->sharingManager = Server::get(ISharingManager::class);
 		$this->legacySharingManager = Server::get(IManager::class);
 		$this->dbConnection = Server::get(IDBConnection::class);
+		$this->snowflakeGenerator = Server::get(ISnowflakeGenerator::class);
+		$this->eventDispatcher = Server::get(IEventDispatcher::class);
 
 		$this->owner = $this->createUser('owner', 'password');
 		$this->user1 = $this->createUser('user1', 'password');
@@ -181,6 +200,18 @@ final class SharingLegacySyncTest extends TestCase {
 		$this->assertEquals(array_map($this->fixLegacyShare(...), $a), array_map($this->fixLegacyShare(...), $b));
 	}
 
+	private function fixShare(Share $share): Share {
+		foreach ($share->sources as $source) {
+			$this->invokePrivate($source, 'getMetadata', [$this->sharingRegistry]);
+		}
+
+		return $share;
+	}
+
+	private function assertSharesEquals(Share $a, Share $b): void {
+		$this->assertEquals($this->fixShare($a), $this->fixShare($b));
+	}
+
 	/**
 	 * Legacy shares are not able to store sub-second timestamps, so we truncate it for the tests.
 	 */
@@ -233,36 +264,92 @@ final class SharingLegacySyncTest extends TestCase {
 		$this->assertEquals(ShareState::Active, $shares[0]->state);
 	}
 
-	public function testSingleFolderToLocalUserWithReadAndDownloadPermission(): void {
-		$accessContext = new ShareAccessContext($this->owner);
-		$share = $this->sharingManager->createShare($accessContext);
-		$share = $this->sharingManager->addShareSource($accessContext, $share, new ShareSource(NodeShareSourceType::class, (string)$this->nodeFolder->getId()));
-		$share = $this->sharingManager->addShareRecipient($accessContext, $share, new ShareRecipient(UserShareRecipientType::class, $this->user1->getUID(), null));
-		$share = $this->sharingManager->updateSharePermission($accessContext, $share, new SharePermission(NodeReadSharePermissionType::class, true));
-		$share = $this->sharingManager->updateSharePermission($accessContext, $share, new SharePermission(NodeDownloadSharePermissionType::class, true));
-		$share = $this->sharingManager->updateShareState($accessContext, $share, ShareState::Active);
+	private function createShare(Share $share): void {
+		// TODO: Use manager
 
-		$legacyShares = array_values(iterator_to_array($this->legacySharingManager->getAllShares()));
-		$this->assertCount(1, $legacyShares);
-		$this->assertLegacySharesEquals(
+		$this->sharingBackend->createShare($share->id, $share->owner, $share->created);
+		foreach ($share->sources as $source) {
+			$this->sharingBackend->addShareSource($share->id, $source);
+		}
+		foreach ($share->recipients as $recipient) {
+			$this->sharingBackend->addShareRecipient($share->id, $recipient);
+		}
+		foreach ($share->properties as $property) {
+			$this->sharingBackend->updateShareProperty($share->id, $property);
+		}
+		foreach ($share->permissions as $permission) {
+			$this->sharingBackend->updateSharePermission($share->id, $permission);
+		}
+		$this->sharingBackend->updateShareState($share->id, $share->state);
+
+		$this->eventDispatcher->dispatchTyped(new SharesUpdatedEvent([$share->id]));
+	}
+
+	public function testSingleFolderToLocalUserWithReadAndDownloadPermission(): void {
+		$created = $this->truncateCreationTime(new DateTimeImmutable());
+
+		$share = new Share(
+			$this->snowflakeGenerator->nextId(),
+			new ShareUser($this->owner->getUID(), null),
+			$created,
+			$created,
+			ShareState::Active,
+			null,
+			[new ShareSource(NodeShareSourceType::class, (string)$this->nodeFolder->getId())],
+			[new ShareRecipient(UserShareRecipientType::class, $this->user1->getUID(), null, $this->sharingManager->generateSecret(), new ShareUser($this->owner->getUID(), null))],
+			[],
 			[
-				$this->legacySharingManager->newShare()
-					->setId($legacyShares[0]->getId())
-					->setProviderId('ocinternal')
-					->setNode($this->nodeFolder)
-					->setShareType(IShare::TYPE_USER)
-					->setSharedWith($this->user1->getUID())
-					->setSharedWithDisplayName($this->user1->getDisplayName())
-					->setSharedBy($this->owner->getUID())
-					->setShareOwner($this->owner->getUID())
-					->setPermissions(Constants::PERMISSION_READ)
-					->setAttributes((new ShareAttributes())->setAttribute('permissions', 'download', true))
-					->setStatus(IShare::STATUS_PENDING)
-					->setTarget('/' . $this->nodeFolder->getName())
-					->setShareTime(DateTime::createFromImmutable($this->truncateCreationTime($share->created)))
-					->setMailSend(false),
-			],
-			$legacyShares,
+				NodeReadSharePermissionType::class => new SharePermission(NodeReadSharePermissionType::class, true),
+				NodeDownloadSharePermissionType::class => new SharePermission(NodeDownloadSharePermissionType::class, true),
+			]
 		);
+
+		$legacyShare = $this->legacySharingManager->newShare()
+			->setProviderId('ocinternal')
+			->setNode($this->nodeFolder)
+			->setShareType(IShare::TYPE_USER)
+			->setSharedWith($this->user1->getUID())
+			->setSharedWithDisplayName($this->user1->getDisplayName())
+			->setSharedBy($this->owner->getUID())
+			->setShareOwner($this->owner->getUID())
+			->setPermissions(Constants::PERMISSION_READ)
+			->setAttributes((new ShareAttributes())->setAttribute('permissions', 'download', true))
+			->setStatus(IShare::STATUS_PENDING)
+			->setTarget('/' . $this->nodeFolder->getName())
+			->setShareTime(DateTime::createFromImmutable($created))
+			->setMailSend(false);
+
+		$this->compareShares($share, [$legacyShare]);
+	}
+
+	/**
+	 * @param list<IShare> $expectedLegacyShares
+	 */
+	private function compareShares(Share $expectedShare, array $expectedLegacyShares): void {
+		$this->createShare($expectedShare);
+
+		$actualLegacyShares = array_values(iterator_to_array($this->legacySharingManager->getAllShares()));
+		$this->assertCount(count($expectedLegacyShares), $actualLegacyShares);
+		$this->assertLegacySharesEquals(
+			array_map(
+				fn(int $index, IShare $expectedLegacyShare): IShare => $expectedLegacyShare->setId($actualLegacyShares[$index]->getId()),
+				array_keys($actualLegacyShares),
+				$expectedLegacyShares,
+			),
+			$actualLegacyShares,
+		);
+
+		$this->sharingManager->deleteShare(new ShareAccessContext(overrideChecks: true), $expectedShare);
+		$this->assertEmpty(iterator_to_array($this->legacySharingManager->getAllShares()));
+
+		foreach ($expectedLegacyShares as $expectedLegacyShare) {
+			$this->invokePrivate($expectedLegacyShare, 'id', [null]);
+			$this->invokePrivate($expectedLegacyShare, 'providerId', [null]);
+			$this->legacySharingManager->createShare($expectedLegacyShare);
+		}
+
+		$actualShares = $this->sharingManager->getShares(new ShareAccessContext(overrideChecks: true), null, null, null, null, null, null);
+		$this->assertCount(1, $actualShares);
+		$this->assertSharesEquals($expectedShare, $actualShares[0]);
 	}
 }
