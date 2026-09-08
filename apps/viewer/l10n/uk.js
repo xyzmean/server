@@ -1,0 +1,8 @@
+OC.L10N.register(
+    "viewer",
+    {
+    "Viewer" : "Переглядач",
+    "Simple file viewer with slideshow for media" : "Простий переглядач файлів зі слайдшоу для зображень",
+    "Show your latest holiday photos and videos like in the movies, show a glimpse of your latest novel directly from your Nextcloud, choose the best GIF of your collection thanks to the direct preview of your favorites files and many more!" : "Покажіть свої останні фото та відео зі свят, як у фільмах, погляньте на свій останній роман прямо з Nextcloud, виберіть найкращий GIF зі своєї колекції завдяки прямому попередньому перегляду файлів, які ви вподобали, та багато іншого!"
+},
+"nplurals=4; plural=(n % 1 == 0 && n % 10 == 1 && n % 100 != 11 ? 0 : n % 1 == 0 && n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 1 : n % 1 == 0 && (n % 10 ==0 || (n % 10 >=5 && n % 10 <=9) || (n % 100 >=11 && n % 100 <=14 )) ? 2: 3);");

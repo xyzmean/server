@@ -1,0 +1,8 @@
+OC.L10N.register(
+    "viewer",
+    {
+    "Viewer" : "Penampil",
+    "Simple file viewer with slideshow for media" : "Penampil berkas sederhana dengan pertunjukan salindia bagi media",
+    "Show your latest holiday photos and videos like in the movies, show a glimpse of your latest novel directly from your Nextcloud, choose the best GIF of your collection thanks to the direct preview of your favorites files and many more!" : "Tampilkan foto dan video liburan terbaru Anda layaknya di film, tampilkan cuplikan novel terbaru Anda langsung dari Nextcloud, pilih GIF terbaik dari koleksi Anda berkat pratinjau langsung file favorit Anda, dan masih banyak lagi!"
+},
+"nplurals=1; plural=0;");

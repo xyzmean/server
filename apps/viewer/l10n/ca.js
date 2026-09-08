@@ -1,0 +1,8 @@
+OC.L10N.register(
+    "viewer",
+    {
+    "Viewer" : "Visor",
+    "Simple file viewer with slideshow for media" : "Visor de fitxers senzill amb presentació de diapositives per a contingut multimèdia",
+    "Show your latest holiday photos and videos like in the movies, show a glimpse of your latest novel directly from your Nextcloud, choose the best GIF of your collection thanks to the direct preview of your favorites files and many more!" : "Vegeu les fotografies i vídeos de les darreres vacances com a les pel·lícules, doneu un cop d'ull a la darrera novel·la des del Nextcloud, escolliu el millor GIF de la vostra col·lecció gràcies a la previsualització dels fitxers preferits i molt més!"
+},
+"nplurals=2; plural=(n != 1);");

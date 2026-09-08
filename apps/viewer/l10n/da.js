@@ -1,0 +1,8 @@
+OC.L10N.register(
+    "viewer",
+    {
+    "Viewer" : "Fremviser",
+    "Simple file viewer with slideshow for media" : "Simpel filfremviser med slideshow til mediefiler",
+    "Show your latest holiday photos and videos like in the movies, show a glimpse of your latest novel directly from your Nextcloud, choose the best GIF of your collection thanks to the direct preview of your favorites files and many more!" : "Vis dine seneste feriefotos og videoer som i en film, vis et glimt af din nyeste roman direkte fra din Nextcloud, vælg den bedste GIF fra din samling takket være den direkte fremvisning af dine favoritfiler og meget mere!"
+},
+"nplurals=2; plural=(n != 1);");

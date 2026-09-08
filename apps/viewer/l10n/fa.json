@@ -1,0 +1,6 @@
+{ "translations": {
+    "Viewer" : "نمایشگر",
+    "Simple file viewer with slideshow for media" : "نمایشگر ساده فایل با نمایش اسلاید برای رسانه",
+    "Show your latest holiday photos and videos like in the movies, show a glimpse of your latest novel directly from your Nextcloud, choose the best GIF of your collection thanks to the direct preview of your favorites files and many more!" : "عکس‌ها و ویدیوهای تعطیلات اخیر خود را مثل فیلم‌ها نشان دهید، نمایی از آخرین رمان خود را مستقیماً از نکست‌کلود به نمایش بگذارید، بهترین GIF مجموعه خود را با پیش‌نمایش مستقیم فایل‌های مورد علاقه انتخاب کنید و موارد دیگر!"
+},"pluralForm" :"nplurals=2; plural=(n > 1);"
+}

@@ -1,0 +1,8 @@
+OC.L10N.register(
+    "viewer",
+    {
+    "Viewer" : "ビューア",
+    "Simple file viewer with slideshow for media" : "メディアスライドショー用の簡易ファイルビューア",
+    "Show your latest holiday photos and videos like in the movies, show a glimpse of your latest novel directly from your Nextcloud, choose the best GIF of your collection thanks to the direct preview of your favorites files and many more!" : "映画のようにあなたの最新の休日の写真やビデオを表示したり、Nextcloudからあなたの最新の小説を直接表示したり、お気に入りファイルの直接プレビューのおかげでコレクションの最高のGIFを選択できます。"
+},
+"nplurals=1; plural=0;");

@@ -1,0 +1,8 @@
+OC.L10N.register(
+    "viewer",
+    {
+    "Viewer" : "Үзэгч",
+    "Simple file viewer with slideshow for media" : "Медиа слайдшоутай энгийн файл үзэгч",
+    "Show your latest holiday photos and videos like in the movies, show a glimpse of your latest novel directly from your Nextcloud, choose the best GIF of your collection thanks to the direct preview of your favorites files and many more!" : "Хамгийн сүүлийн амралтын зургаа болон видеогоо киноны нэгэн адил харуул, хамгийн сүүлийн романаасаа Nextcloud-аасаа шууд харуул, дуртай файлуудаа шууд урьдчилан харсанд баярлан цуглуулгаасаа хамгийн сайн GIF-ийг сонго, мөн бусад олон зүйл хийх боломжтой!"
+},
+"nplurals=2; plural=(n != 1);");

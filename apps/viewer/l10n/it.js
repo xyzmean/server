@@ -1,0 +1,8 @@
+OC.L10N.register(
+    "viewer",
+    {
+    "Viewer" : "Visualizzatore",
+    "Simple file viewer with slideshow for media" : "Semplice visualizzatore di file con presentazioni per i media",
+    "Show your latest holiday photos and videos like in the movies, show a glimpse of your latest novel directly from your Nextcloud, choose the best GIF of your collection thanks to the direct preview of your favorites files and many more!" : "Mostra le ultime foto e video delle tue vacanze come nei film, mostra uno scorcio del tuo ultimo romanzo direttamente da Nextcloud, scegli la migliore GIF della tua raccolta grazie all'anteprima diretta dei tuoi file preferiti e molto altro!"
+},
+"nplurals=3; plural=n == 1 ? 0 : n != 0 && n % 1000000 == 0 ? 1 : 2;");
