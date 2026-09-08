@@ -5,6 +5,9 @@
 
 <template>
 	<nav id="app-rail" class="app-rail" :aria-label="t('core', 'Applications')">
+		<!-- The header home link (#nextcloud) is moved in here on desktop, see placeHeaderNodes(). -->
+		<div ref="logo" class="app-rail__logo" />
+
 		<ul class="app-rail__list">
 			<li v-for="app in apps" :key="app.id" class="app-rail__item">
 				<a
@@ -29,24 +32,97 @@
 				</a>
 			</li>
 		</ul>
+
+		<span class="app-rail__spacer" aria-hidden="true" />
+
+		<a
+			v-if="settingsEntry"
+			class="app-rail__link app-rail__link--compact"
+			:class="{ 'app-rail__link--active': settingsEntry.active }"
+			:href="settingsEntry.href"
+			:aria-current="settingsEntry.active ? 'page' : undefined">
+			<span class="app-rail__icon-wrapper">
+				<img
+					class="app-rail__icon"
+					:src="settingsIcon"
+					alt=""
+					aria-hidden="true">
+			</span>
+			<!-- The entry name arrives already translated from the server. -->
+			<span class="hidden-visually">{{ settingsEntry.name }}</span>
+		</a>
+
+		<!-- The header user menu (#user-menu) is moved in here on desktop, see placeHeaderNodes(). -->
+		<div ref="userMenu" class="app-rail__user" />
 	</nav>
 </template>
 
 <script lang="ts">
 import type { INavigationEntry } from '../types/navigation.d.ts'
 
+import { subscribe, unsubscribe } from '@nextcloud/event-bus'
 import { loadState } from '@nextcloud/initial-state'
+import { imagePath } from '@nextcloud/router'
 import { defineComponent } from 'vue'
+
+/**
+ * Mirror of `$breakpoint-mobile` in core/css/variables.scss: below it rail.scss
+ * hides the rail and gives the header its own app menu, logo and user menu back.
+ */
+const DESKTOP_QUERY = '(min-width: 1025px)'
+
+/**
+ * Header nodes the rail hosts on desktop, as [element id, $refs key of its host].
+ *
+ * They are moved rather than copied: the logo is the "home" link and the user
+ * menu is a mounted Vue app with the real avatar, user status and settings
+ * entries behind it. A second copy of either would be a decoration that does
+ * not do what the original does.
+ */
+const RELOCATED_NODES = [
+	['nextcloud', 'logo'],
+	['user-menu', 'userMenu'],
+] as const
 
 export default defineComponent({
 	name: 'AppRail',
 
 	data() {
+		const settingsEntries = loadState<Record<string, INavigationEntry>>('core', 'settingsNavEntries', {})
+
 		return {
 			// Same initial state the header app menu consumes, so the rail lists
 			// exactly the apps (and the order) the user configured in settings.
 			apps: loadState<INavigationEntry[]>('core', 'apps', []),
+			// Personal settings, from the same initial state the user menu reads:
+			// already localized, already carrying the right target and active flag.
+			settingsEntry: settingsEntries.settings ?? null,
+			// The entry ships a person glyph (settings/personal.svg), which right
+			// above the avatar reads as a second profile link rather than as
+			// settings — and the rail shows no label to correct that. Core's own
+			// generic settings action is the cog the design asks for.
+			settingsIcon: imagePath('core', 'actions/settings.svg'),
 		}
+	},
+
+	mounted() {
+		// Not reactive on purpose: neither takes part in rendering.
+		this.homes = new Map()
+		this.desktop = window.matchMedia(DESKTOP_QUERY)
+
+		this.placeHeaderNodes()
+
+		this.desktop.addEventListener('change', this.onLayoutChange)
+		// UserMenu.setUp() runs after MainMenu.setUp() and replaces the node we
+		// just adopted with the mounted menu, so claim the result once it says so.
+		subscribe('core:user-menu:mounted', this.onLayoutChange)
+	},
+
+	beforeDestroy() {
+		this.desktop.removeEventListener('change', this.onLayoutChange)
+		unsubscribe('core:user-menu:mounted', this.onLayoutChange)
+		// Do not take the header's own nodes down with the rail.
+		this.placeHeaderNodes(true)
 	},
 
 	methods: {
@@ -67,6 +143,49 @@ export default defineComponent({
 		 */
 		formatCounter(counter: number): string {
 			return counter > 99 ? '99+' : String(counter)
+		},
+
+		/**
+		 * Event handler wrapper: listeners pass an event, placeHeaderNodes takes a flag.
+		 */
+		onLayoutChange() {
+			this.placeHeaderNodes()
+		},
+
+		/**
+		 * Move the shared header nodes between the header and the rail.
+		 *
+		 * The rail hosts them only while it is visible; at mobile widths they go
+		 * back where the template put them, because there the stock header is the
+		 * whole navigation.
+		 *
+		 * @param evacuate return every node to the header regardless of width
+		 */
+		placeHeaderNodes(evacuate = false) {
+			for (const [id, ref] of RELOCATED_NODES) {
+				const node = document.getElementById(id)
+				if (!node) {
+					continue
+				}
+
+				// Captured on the first pass, while the node is still in the header.
+				if (!this.homes.has(id)) {
+					this.homes.set(id, { parent: node.parentElement, next: node.nextElementSibling })
+				}
+
+				const home = this.homes.get(id)
+				if (!evacuate && this.desktop.matches) {
+					const host = this.$refs[ref] as HTMLElement | undefined
+					if (host && node.parentElement !== host) {
+						host.appendChild(node)
+					}
+				} else if (home.parent && node.parentElement !== home.parent) {
+					// The sibling may itself have been replaced by a Vue root since
+					// (the app menu is), in which case appending restores the order.
+					const before = home.next?.parentElement === home.parent ? home.next : null
+					home.parent.insertBefore(node, before)
+				}
+			}
 		},
 	},
 })
