@@ -28,7 +28,6 @@ test.describe('Viewer follows the files list order', () => {
 		}
 	})
 
-
 	test('steps through a folder sorted by modification time, not by name', async ({ filesListPage, uploadMedia, openFile, viewerPage }) => {
 		// Names ascend a, b, c while the modification times do not, so a
 		// viewer ordering the list itself by name shows a different file
@@ -73,7 +72,6 @@ test.describe('Viewer follows the files list order', () => {
 
 		const listed = (await filesListPage.getRowNames()).filter((name) => name.endsWith('.jpg'))
 		expect(listed).toEqual(['c.jpg', 'b.jpg', 'a.jpg'])
-		
 
 		await openFile(listed[0]!)
 		await viewerPage.waitForOpen()
