@@ -6,6 +6,7 @@
 import { translatePlural as n, translate as t } from '@nextcloud/l10n'
 import Vue from 'vue'
 import AppMenu from './AppMenu.vue'
+import AppRail from './AppRail.vue'
 
 /**
  * Set up the main menu component ("AppMenu")
@@ -27,9 +28,17 @@ export function setUp() {
 	const AppMenuApp = Vue.extend(AppMenu)
 	const appMenu = new AppMenuApp({}).$mount(container)
 
+	// The left rail is the primary app switcher on desktop; the header menu stays
+	// mounted because it is what mobile widths fall back to.
+	const railContainer = document.getElementById('app-rail')
+	const appRail = railContainer
+		? new (Vue.extend(AppRail))({}).$mount(railContainer)
+		: null
+
 	Object.assign(OC, {
 		setNavigationCounter(id, counter) {
 			appMenu.setNavigationCounter(id, counter)
+			appRail?.setNavigationCounter(id, counter)
 		},
 	})
 }
