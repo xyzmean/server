@@ -145,6 +145,19 @@ early enough:
 \OCP\Util::addInitScript('myapp', 'myapp-viewer-register');
 ```
 
+### 📦 Load the viewer on your own page
+
+The viewer ships with the server and the Files app loads it for you. On a page of
+your own, dispatch the `LoadViewer` event from your page controller so the
+viewer's scripts and styles are added to the response:
+
+```php
+use OCA\Viewer\Event\LoadViewer;
+use OCP\EventDispatcher\IEventDispatcher;
+
+$this->eventDispatcher->dispatch(LoadViewer::class, new LoadViewer());
+```
+
 ### 🚀 Open the viewer programmatically
 
 Use the public `getViewer()` API to open the viewer from your own code. It returns
@@ -171,6 +184,7 @@ Signatures:
 - `open(nodes: File[], file?: File, options?: ViewerOptions, handlerId?: string): Promise<void>`
 - `openFolder(folder: Folder, file?: File, options?: ViewerOptions, handlerId?: string): Promise<void>`
 - `compare(node1: File, node2: File, handlerId?: string): Promise<void>`
+- `close(): void`
 
 #### Ordering
 
@@ -194,6 +208,33 @@ active sort from, so pass your own list to `open()` if the order matters.
 | `onNext`   | `() => void`              | Called when navigating to the next item                         |
 | `onClose`  | `() => void`              | Called when the viewer is closed                                |
 | `canLoop`  | `boolean`                 | Whether navigation loops from last to first item and vice versa |
+
+### 🧭 Migrating from `OCA.Viewer`
+
+The `OCA.Viewer` global is gone. Everything is imported from the
+[`@nextcloud/viewer`](https://www.npmjs.com/package/@nextcloud/viewer) package
+instead, and the viewer works with `@nextcloud/files` nodes rather than the
+`fileinfo` objects and path strings it used to take.
+
+| Before                                          | Now                                                          |
+| ----------------------------------------------- | ------------------------------------------------------------ |
+| `OCA.Viewer.open({ path })`                     | `getViewer().openFolder(folder, file)`                       |
+| `OCA.Viewer.open({ path, list })`               | `getViewer().open(nodes, file)`                              |
+| `OCA.Viewer.open({ fileInfo, list })`           | `getViewer().open(nodes, file)`                              |
+| `OCA.Viewer.close()`                            | `getViewer().close()`                                        |
+| `OCA.Viewer.registerHandler({ component })`     | `registerHandler({ tagname })`, see above                    |
+| `\OCP\Util::addScript` for the registration      | `\OCP\Util::addInitScript`                                    |
+
+Two changes are worth calling out because they are not a rename:
+
+Handlers are custom elements now, not Vue components handed to the viewer. A
+handler names a `tagname` you have defined on `window.customElements`, which is
+what lets the viewer render a handler written in any framework, or none. The
+[registration section](#-add-your-own-file-view) walks through it.
+
+Lists and files are `@nextcloud/files` nodes. There is no path-based entry point
+any more: build the nodes you already have, or hand `openFolder()` a folder and
+let it fetch. `fileinfo` objects are not accepted.
 
 > [!TIP]
 > If you feel like your mime should be integrated in this repo, you can also create
