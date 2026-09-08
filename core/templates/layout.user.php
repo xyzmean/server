@@ -62,6 +62,8 @@ p($theme->getTitle());
 			<?php if ($_['id-app-navigation'] !== null) { ?><a href="<?php p($_['id-app-navigation']); ?>" class="button primary skip-navigation"><?php p($l->t('Skip to navigation of app')); ?></a><?php } ?>
 		</div>
 
+		<div id="app-rail"></div>
+
 		<header id="header">
 			<div class="header-start">
 				<a href="<?php print_unescaped($_['logoUrl'] ?: link_to('', 'index.php')); ?>"

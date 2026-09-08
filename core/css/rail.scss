@@ -1,0 +1,182 @@
+/*!
+ * SPDX-FileCopyrightText: 2026 Nextcloud GmbH and Nextcloud contributors
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+
+@use 'variables';
+
+/**
+ * Left application rail.
+ *
+ * Replaces the header app menu on desktop widths: every app is one always-labelled
+ * target, so localized names (Russian in particular) never ellipsize the way they
+ * do in the fixed-width header slot. The header keeps search, notifications and the
+ * user menu; only the app switcher moves out of it.
+ */
+
+:root {
+	--app-rail-width: 76px;
+}
+
+#app-rail {
+	position: fixed;
+	inset-block: 0;
+	inset-inline-start: 0;
+	z-index: 2100;
+	width: var(--app-rail-width);
+	display: flex;
+	flex-direction: column;
+	background-color: var(--color-background-darker);
+	border-inline-end: 1px solid var(--color-border);
+	overflow-y: auto;
+	overflow-x: hidden;
+	// A visible scrollbar inside 76px eats the labels; the rail scrolls by wheel/touch.
+	scrollbar-width: none;
+
+	&::-webkit-scrollbar {
+		display: none;
+	}
+}
+
+.app-rail {
+	padding-block: 10px;
+
+	&__list {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 2px;
+	}
+
+	&__link {
+		position: relative;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 4px;
+		width: 60px;
+		padding-block: 8px 6px;
+		border-radius: 14px;
+		color: var(--color-main-text);
+		text-decoration: none;
+
+		&:hover,
+		&:focus-visible {
+			background-color: var(--color-background-hover);
+		}
+
+		&:focus-visible {
+			outline: 2px solid var(--color-main-text);
+			outline-offset: -2px;
+		}
+
+		&--active {
+			background-color: var(--color-primary-element-light);
+
+			// Flush marker at the very edge of the rail: the item is 60px inside a
+			// 76px rail, so -8px lands it exactly on the viewport edge.
+			&::before {
+				content: '';
+				position: absolute;
+				inset-inline-start: -8px;
+				top: 14px;
+				width: 3px;
+				height: 26px;
+				border-radius: 0 3px 3px 0;
+				background-color: var(--color-primary-element);
+			}
+
+			.app-rail__label {
+				font-weight: 600;
+				color: var(--color-main-text);
+			}
+
+			.app-rail__icon {
+				opacity: 1;
+			}
+		}
+	}
+
+	&__icon-wrapper {
+		position: relative;
+		display: flex;
+		width: 23px;
+		height: 23px;
+	}
+
+	&__icon {
+		width: 23px;
+		height: 23px;
+		// App icons ship as dark glyphs; invert them on dark themes the same way
+		// the app navigation does, instead of hardcoding a colour.
+		filter: var(--background-invert-if-dark);
+		opacity: .8;
+	}
+
+	&__badge {
+		position: absolute;
+		top: -6px;
+		inset-inline-end: -2px;
+		min-width: 17px;
+		height: 17px;
+		padding-inline: 4px;
+		border: 2px solid var(--color-background-darker);
+		border-radius: 9px;
+		background-color: var(--color-error);
+		color: var(--color-primary-element-light);
+		font-size: 10px;
+		font-weight: bold;
+		line-height: 13px;
+		text-align: center;
+		// Two digits plus the border must stay inside the 60px item, otherwise the
+		// badge hangs off the highlighted tile.
+		box-sizing: border-box;
+	}
+
+	&__label {
+		max-width: 100%;
+		padding-inline: 2px;
+		overflow: hidden;
+		color: var(--color-text-maxcontrast);
+		font-size: 10.5px;
+		font-weight: 500;
+		letter-spacing: -.1px;
+		line-height: 1.2;
+		text-align: center;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+}
+
+// The rail owns app switching, so the header menu is redundant here. Vue replaces
+// #header-start__appmenu with the component root on mount, so the class is the
+// only stable hook.
+#header .app-menu {
+	display: none;
+}
+
+// Shift the two absolutely/statically positioned layout blocks past the rail.
+#header:not(.header-guest) {
+	inset-inline-start: var(--app-rail-width);
+	width: calc(100% - var(--app-rail-width));
+}
+
+#content {
+	margin-inline-start: calc(var(--body-container-margin) + var(--app-rail-width));
+	width: calc(100% - var(--body-container-margin) * 2 - var(--app-rail-width));
+}
+
+// On mobile there is no room for a rail; fall back to the stock header app menu.
+@media only screen and (max-width: variables.$breakpoint-mobile) {
+	:root {
+		--app-rail-width: 0px;
+	}
+
+	#app-rail {
+		display: none;
+	}
+
+	#header .app-menu {
+		display: flex;
+	}
+}
