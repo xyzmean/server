@@ -9,7 +9,7 @@
 		<div ref="logo" class="app-rail__logo" />
 
 		<ul class="app-rail__list">
-			<li v-for="app in apps" :key="app.id" class="app-rail__item">
+			<li v-for="app in visibleApps" :key="app.id" class="app-rail__item">
 				<a
 					class="app-rail__link"
 					:class="{ 'app-rail__link--active': app.active }"
@@ -31,9 +31,48 @@
 					<span class="app-rail__label">{{ app.name }}</span>
 				</a>
 			</li>
+
+			<!-- Apps outside the configured rail list: one folded entry with a panel. -->
+			<li v-if="moreApps.length" ref="more" class="app-rail__item app-rail__item--more">
+				<button
+					type="button"
+					class="app-rail__link app-rail__link--more"
+					:class="{ 'app-rail__link--active': moreActive }"
+					aria-haspopup="menu"
+					:aria-expanded="moreOpen ? 'true' : 'false'"
+					@click="moreOpen = !moreOpen">
+					<span class="app-rail__icon-wrapper">
+						<span class="app-rail__more-glyph" aria-hidden="true" />
+						<span v-if="moreUnread > 0" class="app-rail__badge">
+							{{ formatCounter(moreUnread) }}
+							<span class="hidden-visually">{{ n('core', '%n notification', '%n notifications', moreUnread) }}</span>
+						</span>
+					</span>
+					<span class="app-rail__label">{{ t('core', 'Apps') }}</span>
+				</button>
+				<div v-if="moreOpen" class="app-rail__more" role="menu">
+					<a
+						v-for="app in moreApps"
+						:key="app.id"
+						class="app-rail__more-entry"
+						:class="{ 'app-rail__more-entry--active': app.active }"
+						:href="app.href"
+						:target="app.target ? '_blank' : undefined"
+						:rel="app.target ? 'noopener noreferrer' : undefined"
+						role="menuitem"
+						:aria-current="app.active ? 'page' : undefined">
+						<img class="app-rail__more-icon" :src="app.icon" alt="" aria-hidden="true">
+						<span class="app-rail__more-name">{{ app.name }}</span>
+						<span v-if="app.unread > 0" class="app-rail__more-counter">{{ formatCounter(app.unread) }}</span>
+					</a>
+				</div>
+			</li>
 		</ul>
 
 		<span class="app-rail__spacer" aria-hidden="true" />
+
+		<!-- The header tools (#unified-search, #notifications, #contactsmenu) are moved in here on desktop, see placeHeaderNodes(). -->
+		<div ref="tools" class="app-rail__tools" />
 
 		<a
 			v-if="settingsEntry"
@@ -72,16 +111,25 @@ import { defineComponent } from 'vue'
 const DESKTOP_QUERY = '(min-width: 1025px)'
 
 /**
- * Header nodes the rail hosts on desktop, as [element id, $refs key of its host].
+ * Header nodes the rail hosts on desktop, as [selector, $refs key of its host].
  *
  * They are moved rather than copied: the logo is the "home" link and the user
  * menu is a mounted Vue app with the real avatar, user status and settings
  * entries behind it. A second copy of either would be a decoration that does
- * not do what the original does.
+ * not do what the original does. With every header node hosted here, rail.scss
+ * hides the header itself on desktop and sets --header-height to zero.
  */
 const RELOCATED_NODES = [
-	['nextcloud', 'logo'],
-	['user-menu', 'userMenu'],
+	['#nextcloud', 'logo'],
+	// The design has no header at all: search, notifications and the contacts
+	// menu live at the bottom of the rail, above settings and the avatar. They
+	// share one host and arrive in this order. Unified search mounts with
+	// `el: '#unified-search'`, and Vue 2 replaces that node with the component
+	// root, which carries no id — hence the class fallback.
+	['#unified-search, .unified-search-menu', 'tools'],
+	['#notifications', 'tools'],
+	['#contactsmenu', 'tools'],
+	['#user-menu', 'userMenu'],
 ] as const
 
 export default defineComponent({
@@ -94,6 +142,11 @@ export default defineComponent({
 			// Same initial state the header app menu consumes, so the rail lists
 			// exactly the apps (and the order) the user configured in settings.
 			apps: loadState<INavigationEntry[]>('core', 'apps', []),
+			// Admin-side composition of the rail (core/xcloud_rail_apps): the ids
+			// to show, in this order. Anything else folds into «More». Empty means
+			// the stock behaviour — every app, user order.
+			railApps: loadState<string[]>('core', 'railApps', []),
+			moreOpen: false,
 			// Personal settings, from the same initial state the user menu reads:
 			// already localized, already carrying the right target and active flag.
 			settingsEntry: settingsEntries.settings ?? null,
@@ -103,6 +156,45 @@ export default defineComponent({
 			// generic settings action is the cog the design asks for.
 			settingsIcon: imagePath('core', 'actions/settings.svg'),
 		}
+	},
+
+	computed: {
+		visibleApps(): INavigationEntry[] {
+			if (!this.railApps.length) {
+				return this.apps
+			}
+			return this.railApps
+				.map((id) => this.apps.find((app) => app.id === id))
+				.filter((app): app is INavigationEntry => app !== undefined)
+		},
+
+		moreApps(): INavigationEntry[] {
+			if (!this.railApps.length) {
+				return []
+			}
+			return this.apps.filter((app) => !this.railApps.includes(app.id))
+		},
+
+		moreActive(): boolean {
+			return this.moreApps.some((app) => app.active)
+		},
+
+		moreUnread(): number {
+			return this.moreApps.reduce((sum, app) => sum + (app.unread || 0), 0)
+		},
+	},
+
+	watch: {
+		moreOpen(open: boolean) {
+			// The panel closes on a click anywhere outside it and on Escape.
+			if (open) {
+				document.addEventListener('click', this.onDocumentClick, true)
+				document.addEventListener('keydown', this.onDocumentKeydown)
+			} else {
+				document.removeEventListener('click', this.onDocumentClick, true)
+				document.removeEventListener('keydown', this.onDocumentKeydown)
+			}
+		},
 	},
 
 	mounted() {
@@ -126,6 +218,19 @@ export default defineComponent({
 	},
 
 	methods: {
+		onDocumentClick(event: MouseEvent) {
+			const host = this.$refs.more as HTMLElement | undefined
+			if (host && !host.contains(event.target as Node)) {
+				this.moreOpen = false
+			}
+		},
+
+		onDocumentKeydown(event: KeyboardEvent) {
+			if (event.key === 'Escape') {
+				this.moreOpen = false
+			}
+		},
+
 		/**
 		 * Keep the unread badge in sync with OC.setNavigationCounter.
 		 *
@@ -162,18 +267,18 @@ export default defineComponent({
 		 * @param evacuate return every node to the header regardless of width
 		 */
 		placeHeaderNodes(evacuate = false) {
-			for (const [id, ref] of RELOCATED_NODES) {
-				const node = document.getElementById(id)
+			for (const [selector, ref] of RELOCATED_NODES) {
+				const node = document.querySelector(selector) as HTMLElement | null
 				if (!node) {
 					continue
 				}
 
 				// Captured on the first pass, while the node is still in the header.
-				if (!this.homes.has(id)) {
-					this.homes.set(id, { parent: node.parentElement, next: node.nextElementSibling })
+				if (!this.homes.has(selector)) {
+					this.homes.set(selector, { parent: node.parentElement, next: node.nextElementSibling })
 				}
 
-				const home = this.homes.get(id)
+				const home = this.homes.get(selector)
 				if (!evacuate && this.desktop.matches) {
 					const host = this.$refs[ref] as HTMLElement | undefined
 					if (host && node.parentElement !== host) {
