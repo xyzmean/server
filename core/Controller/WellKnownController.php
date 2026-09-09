@@ -33,7 +33,16 @@ class WellKnownController extends Controller {
 	 */
 	#[PublicPage]
 	#[NoCSRFRequired]
-	#[FrontpageRoute(verb: 'GET', url: '.well-known/{service}')]
+	// `{service}` matches a single path segment by default, which is enough for
+	// the well-known names Nextcloud ships (caldav, carddav, webfinger, …) but
+	// not for the ones that are two segments deep. Matrix client discovery is
+	// exactly that: `.well-known/matrix/client`. Without the requirement the
+	// route never matches and the request 404s in the router, so a handler
+	// registered by an app is never consulted.
+	//
+	// Widening this only changes paths that used to 404 anyway — they now reach
+	// the handler chain and, if nothing answers, get the controller's own 404.
+	#[FrontpageRoute(verb: 'GET', url: '.well-known/{service}', requirements: ['service' => '.+'])]
 	public function handle(string $service): Response {
 		$response = $this->requestManager->process(
 			$service,
