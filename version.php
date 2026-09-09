@@ -12,7 +12,7 @@ declare(strict_types=1);
 // when updating major/minor version number.
 
 // Четвёртая цифра — номер сборки xcloud, а не апстрима: см. bump-version.sh
-$OC_Version = [34, 0, 3, 1000];
+$OC_Version = [34, 0, 3, 1004];
 
 // The human-readable string
 $OC_VersionString = '34.0.3';
