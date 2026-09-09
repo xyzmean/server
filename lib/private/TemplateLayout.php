@@ -82,6 +82,11 @@ class TemplateLayout {
 
 				$this->initialState->provideInitialState('core', 'active-app', $this->navigationManager->getActiveEntry());
 				$this->initialState->provideInitialState('core', 'apps', array_values($this->navigationManager->getAll()));
+				// xcloud: the rail shows the apps listed here, in this order; everything
+				// else folds into its «More» entry. Empty list = every app, stock order.
+				//   occ config:app:set core xcloud_rail_apps --value='["spreed","deck","tasks"]'
+				$railApps = json_decode($this->config->getAppValue('core', 'xcloud_rail_apps', '[]'), true);
+				$this->initialState->provideInitialState('core', 'railApps', is_array($railApps) ? array_values($railApps) : []);
 
 				$this->initialState->provideInitialState('unified-search', 'min-search-length', $this->appConfig->getValueInt(Application::APP_ID, ConfigLexicon::UNIFIED_SEARCH_MIN_SEARCH_LENGTH));
 				if ($this->config->getSystemValueBool('unified_search.enabled', false) || !$this->config->getSystemValueBool('enable_non-accessible_features', true)) {

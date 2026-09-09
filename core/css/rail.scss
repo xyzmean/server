@@ -8,11 +8,12 @@
 /**
  * Left application rail.
  *
- * Replaces the header app menu on desktop widths: every app is one always-labelled
+ * Replaces the header on desktop widths: every app is one always-labelled
  * target, so localized names (Russian in particular) never ellipsize the way they
- * do in the fixed-width header slot. The home link and the account menu move down
- * here with it (AppRail relocates the nodes themselves, see the component); the
- * header keeps unified search, notifications and the contacts menu.
+ * do in the fixed-width header slot. The home link, unified search, notifications,
+ * the contacts menu and the account menu all move down here (AppRail relocates
+ * the nodes themselves, see the component), and the header is hidden: the design
+ * has no top bar, the content starts at the top edge.
  */
 
 :root {
@@ -149,6 +150,104 @@
 		display: flex;
 		width: 23px;
 		height: 23px;
+	}
+
+	// «More»: a button styled as a rail entry, glyph is a 3×3 dot grid drawn in
+	// the current colour so it follows the label like the app glyphs do.
+	&__item--more {
+		position: relative;
+	}
+
+	&__link--more {
+		border: none;
+		background: none;
+		font: inherit;
+		cursor: pointer;
+		margin: 0;
+		min-height: 0;
+	}
+
+	&__more-glyph {
+		display: block;
+		width: 23px;
+		height: 23px;
+		background-image: radial-gradient(circle, currentColor 2.3px, transparent 2.8px);
+		background-size: 8px 8px;
+		background-position: center;
+		background-repeat: repeat;
+		// Three rows and columns of dots, 8px apart, inside a 22px box.
+		width: 22px;
+		height: 22px;
+		margin: 0.5px;
+		color: var(--color-text-maxcontrast);
+	}
+
+	&__link--active &__more-glyph,
+	&__link--more:hover &__more-glyph {
+		color: inherit;
+	}
+
+	// «Приложения» is the longest label the rail carries; a notch tighter so it
+	// stays on one line inside 72px.
+	&__item--more &__label {
+		font-size: 10px;
+		letter-spacing: -0.3px;
+	}
+
+	// The panel beside the rail: one row per folded app.
+	&__more {
+		position: fixed;
+		inset-inline-start: calc(var(--app-rail-width) + 8px);
+		top: auto;
+		z-index: 2200;
+		min-width: 240px;
+		padding: 6px;
+		border-radius: var(--border-radius-large);
+		background-color: var(--color-main-background);
+		box-shadow: 0 1px 5px var(--color-box-shadow);
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+	}
+
+	&__more-entry {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		min-height: var(--default-clickable-area);
+		padding: 0 12px 0 10px;
+		border-radius: var(--border-radius-element);
+		color: var(--color-main-text);
+		text-decoration: none;
+		font-size: 14px;
+
+		&:hover,
+		&:focus-visible {
+			background-color: var(--color-background-hover);
+		}
+
+		&--active {
+			background-color: rgba(var(--color-primary-element-rgb), .14);
+			font-weight: 600;
+		}
+	}
+
+	&__more-icon {
+		width: 20px;
+		height: 20px;
+		// App icons are white glyphs; on the page background they need the same
+		// treatment as in the header app menu.
+		filter: var(--background-invert-if-bright);
+		opacity: .8;
+	}
+
+	&__more-name {
+		flex: 1 1 auto;
+	}
+
+	&__more-counter {
+		font-size: 12px;
+		color: var(--color-text-maxcontrast);
 	}
 
 	&__icon {
@@ -300,10 +399,218 @@
 	display: none;
 }
 
-// Shift the two absolutely/statically positioned layout blocks past the rail.
+// Shift the header past the rail — it only matters below the desktop breakpoint,
+// where the header comes back (see the media query at the end).
 #header:not(.header-guest) {
 	inset-inline-start: var(--app-rail-width);
 	width: calc(100% - var(--app-rail-width));
+}
+
+/**
+ * Desktop: no header at all. Every node it carried is hosted by the rail, so the
+ * bar itself is hidden and its height is zeroed for everything laid out below it
+ * (#content margin, --body-height, sidebars, NcContent). Only where the rail
+ * exists — guest pages (login, public shares) render no #app-rail and keep the
+ * stock header.
+ */
+@media only screen and (min-width: (variables.$breakpoint-mobile + 1)) {
+	body:has(#app-rail) {
+		--header-height: 0px;
+		// The theming app emits --body-height with the header height already
+		// substituted («calc(100% - 0px - 50px - …)»), so zeroing the variable
+		// above is not enough for the content box: restate it without the bar.
+		--body-height: calc(100% - env(safe-area-inset-bottom) - var(--body-container-margin));
+	}
+
+	body:has(#app-rail) #header:not(.header-guest) {
+		display: none;
+	}
+}
+
+/**
+ * Header tools hosted at the bottom of the rail: unified search, notifications,
+ * contacts. Each is a NcHeaderMenu (or the search trigger) sized off
+ * --header-height, which is zero here, so the geometry is restated.
+ */
+.app-rail__tools {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	flex-shrink: 0;
+	gap: 2px;
+	margin-block-end: 2px;
+}
+
+#app-rail .app-rail__tools > * {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+#app-rail .app-rail__tools .header-menu,
+#app-rail .app-rail__tools .unified-search-menu {
+	width: var(--default-clickable-area);
+	height: var(--default-clickable-area);
+}
+
+#app-rail .app-rail__tools .header-menu__trigger,
+#app-rail .app-rail__tools .unified-search-input__button {
+	// The upstream declarations are !important, so these have to be as well.
+	--button-size: var(--default-clickable-area) !important;
+	width: var(--default-clickable-area);
+	min-width: var(--default-clickable-area);
+	height: var(--default-clickable-area);
+	padding: 0;
+	border: none;
+	border-radius: 12px;
+	background: none;
+	// Header icons are tuned for the plain colour bar; on the rail they take the
+	// same muted tone as the app glyphs and brighten on hover.
+	color: var(--color-text-maxcontrast) !important;
+	opacity: 1;
+
+	&:hover,
+	&:focus-visible {
+		color: var(--color-main-text) !important;
+		background-color: var(--color-background-hover);
+	}
+}
+
+// The search trigger is a wide labelled field in the header, absolutely
+// positioned to span the bar (UnifiedSearchInput.vue: position absolute,
+// inset-inline 0). Inside the rail that box would stretch the whole column and
+// park the glass in the middle of the app list — so it is put back in flow.
+#app-rail .app-rail__tools .unified-search-input {
+	display: flex;
+	position: static;
+	inset: auto;
+	// flex: 0 1 auto upstream shrinks the box to 2px next to the search bar.
+	flex: 0 0 var(--default-clickable-area);
+	width: var(--default-clickable-area);
+	min-width: var(--default-clickable-area);
+	height: var(--default-clickable-area);
+	margin: 0;
+	padding: 0;
+}
+
+#app-rail .app-rail__tools .unified-search-input__button {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin: 0;
+	cursor: pointer;
+}
+
+#app-rail .app-rail__tools .unified-search-input__label {
+	display: none;
+}
+
+// Apps with a local filter (Files, Deck, …) open a text field instead of the
+// modal. In the header it widens in place; there is no room for that in a 76px
+// rail, so the open field floats beside the rail as a small panel, with the
+// «global search» button it already carries. Closed it takes no space.
+#app-rail .app-rail__tools .local-unified-search {
+	display: none;
+	position: fixed;
+	inset-block-end: 8px;
+	inset-inline-start: calc(var(--app-rail-width) + 8px);
+	z-index: 2100;
+	// The component sizes itself off --header-height (zero here) and a
+	// computed --local-search-width, and clips its overflow: all restated.
+	width: 380px;
+	max-width: calc(100vw - var(--app-rail-width) - 16px);
+	height: auto;
+	padding: 8px;
+	gap: 8px;
+	overflow: visible;
+	border-radius: var(--border-radius-large);
+	background-color: var(--color-main-background);
+	box-shadow: 0 1px 5px var(--color-box-shadow);
+
+	&--open {
+		display: flex;
+		align-items: center;
+	}
+
+	.local-unified-search__input {
+		flex: 1 1 auto;
+		width: auto;
+		min-width: 0;
+	}
+
+	// In the header this button floats over the input's end; here it is a row.
+	.local-unified-search__global-search {
+		position: static;
+		flex: 0 0 auto;
+	}
+}
+
+// Notifications and contacts ship filled Material glyphs; the rail draws every
+// glyph with the same 1.8px pen (see theme/shell.css for the app icons). The
+// shipped svg is hidden and the outline is drawn as a currentColor mask. The
+// notifications app signals unread by adding a `.notification__dot` path to its
+// svg — the dot is redrawn from that, so the state survives the swap.
+#app-rail .app-rail__tools .notifications-button__icon,
+#app-rail .app-rail__tools .contactsmenu__trigger-icon {
+	position: relative;
+	display: block;
+	width: 22px;
+	height: 22px;
+	// NcIconSvgWrapper paints its icon in the header's plain-text colour with
+	// !important; the glyph must follow the trigger like the others.
+	color: inherit !important;
+
+	// NcIconSvgWrapper sizes its svg with a component variable and keeps it
+	// visible past a visibility override; taking it out of rendering is the
+	// reliable way, and :has() below still sees the unread marker inside it.
+	svg {
+		display: none;
+	}
+
+	&::before {
+		content: '';
+		position: absolute;
+		inset: 0;
+		background-color: currentColor;
+		-webkit-mask: var(--rail-tool-glyph) center / contain no-repeat;
+		mask: var(--rail-tool-glyph) center / contain no-repeat;
+	}
+}
+
+#app-rail .app-rail__tools .notifications-button__icon {
+	--rail-tool-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9.2a6 6 0 0 1 12 0v4.3l1.6 2.6H4.4L6 13.5Z'/%3E%3Cpath d='M9.8 19.2a2.3 2.3 0 0 0 4.4 0'/%3E%3C/svg%3E");
+
+	&:has(.notification__dot)::after {
+		content: '';
+		position: absolute;
+		top: -1px;
+		inset-inline-end: 0;
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		border: 2px solid var(--color-background-darker);
+		background-color: var(--color-error);
+		box-sizing: content-box;
+	}
+}
+
+#app-rail .app-rail__tools .contactsmenu__trigger-icon {
+	--rail-tool-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3.5' y='4.5' width='17' height='15' rx='3'/%3E%3Ccircle cx='9' cy='10.2' r='2.1'/%3E%3Cpath d='M5.6 16.4c.6-1.6 1.9-2.4 3.4-2.4s2.8.8 3.4 2.4M14.6 9.5h3.2M14.6 13h3.2'/%3E%3C/svg%3E");
+}
+
+// Dropdowns are fixed below the top-right corner by default; beside the trigger
+// is the only place they still make sense — same as the account menu.
+#app-rail .app-rail__tools .header-menu__wrapper {
+	top: auto;
+	inset-block-end: 8px;
+	inset-inline-start: var(--app-rail-width);
+	inset-inline-end: auto;
+	// header-menu-height() subtracts --header-height (now 0) from 100vh.
+	max-height: calc(100vh - 16px);
+}
+
+#app-rail .app-rail__tools .header-menu__caret {
+	display: none;
 }
 
 // Both ids are needed, but only as a DIRECT CHILD of body. The template renders
