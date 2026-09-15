@@ -158,7 +158,16 @@
 		position: relative;
 	}
 
-	&__link--more {
+	// Two classes deep, and not for tidiness. The rail entry is a <button>, and
+	// core paints every button that is not a NcButton with
+	// --color-primary-element-light (`button:not(.button-vue, [class^="vs__"])`
+	// in server.scss). That selector carries a class inside :not(), so it
+	// outweighs a single class here: `background: none` written once was
+	// overridden and never did anything. The result was a solid plate under
+	// «Приложения» on every screen — the entry read as selected while nothing
+	// was, and its muted label sat at 3.54 contrast on that plate instead of
+	// the 5.8 it has on the rail itself. Measured on the stand, not guessed.
+	&__link--more.app-rail__link {
 		border: none;
 		background: none;
 		font: inherit;
