@@ -124,6 +124,14 @@ export default defineComponent({
 			settingsList,
 			// Fail closed: a missing state must not leak the link.
 			appStoreLinkShown: loadState<boolean>('core', 'appStoreLinkShown', false),
+			// xcloud: the same list the rail is built from (see AppRail.vue and
+			// TemplateLayout). Below 1025 px the rail is gone and this grid is
+			// the only navigation there is — and it was showing stock order and
+			// stock apps, so on a phone the product looked like plain Nextcloud:
+			// Widgets, Files, Photos and Events first, the seven apps of the
+			// product scattered after them. Same source, same order, one answer
+			// to "what is this product made of".
+			railApps: loadState<string[]>('core', 'railApps', []),
 			isAdmin: getCurrentUser()?.isAdmin ?? false,
 			// Roving tabindex: only this tile has tabindex=0; arrow keys move it.
 			focusedIndex: 0,
@@ -202,7 +210,22 @@ export default defineComponent({
 			} else if (this.appStoreLinkShown) {
 				tail.push(this.appStoreEntry)
 			}
-			return [...this.appList, ...tail]
+			return [...this.orderedApps, ...tail]
+		},
+
+		// The rail's apps first, in the rail's order; everything else keeps its
+		// own order behind them. Nothing is hidden: on a narrow screen this
+		// grid replaces the rail entirely, and an app that is reachable on the
+		// desktop through the rail's «More» has to stay reachable here.
+		orderedApps(): INavigationEntry[] {
+			if (!this.railApps.length) {
+				return this.appList
+			}
+			const pinned = this.railApps
+				.map((id) => this.appList.find((app) => app.id === id))
+				.filter((app): app is INavigationEntry => app !== undefined)
+			const rest = this.appList.filter((app) => !this.railApps.includes(app.id))
+			return [...pinned, ...rest]
 		},
 	},
 
