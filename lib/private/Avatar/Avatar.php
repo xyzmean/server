@@ -29,11 +29,16 @@ abstract class Avatar implements IAvatar {
 	 * (0.4 letter-to-total-height ratio, 500*0.4=200), so: 200/0.715 = 280px.
 	 * Since we start from the baseline (text-anchor) we need to
 	 * shift the y axis by 100px (half the caps height): 500/2+100=350
+	 *
+	 * xcloud: the design sets initials at 0.34–0.40 of the circle and bold
+	 * (13px in 36px, 10.5px in 26px); 280px bold two-letter initials touched
+	 * the edge of the circle. 190px = 0.38; caps height 0.715*190 = 136, so
+	 * the baseline sits at 500/2+68 = 318.
 	 */
 	private string $svgTemplate = '<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 		<svg width="{size}" height="{size}" version="1.1" viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg">
 			<rect width="100%" height="100%" fill="#{fill}"></rect>
-			<text x="50%" y="350" style="font-weight:normal;font-size:280px;font-family:\'Noto Sans\';text-anchor:middle;fill:#{fgFill}">{letter}</text>
+			<text x="50%" y="318" style="font-weight:bold;font-size:190px;font-family:\'Noto Sans\';text-anchor:middle;fill:#{fgFill}">{letter}</text>
 		</svg>';
 
 	public function __construct(
@@ -89,8 +94,7 @@ abstract class Avatar implements IAvatar {
 	 *
 	 */
 	protected function getAvatarVector(string $userDisplayName, int $size, bool $darkTheme): string {
-		$fgRGB = $this->avatarBackgroundColor($userDisplayName);
-		$bgRGB = $fgRGB->alphaBlending(0.1, $darkTheme ? new Color(0, 0, 0) : new Color(255, 255, 255));
+		[$bgRGB, $fgRGB] = $this->avatarColors($userDisplayName, $darkTheme);
 		$fill = sprintf('%02x%02x%02x', $bgRGB->red(), $bgRGB->green(), $bgRGB->blue());
 		$fgFill = sprintf('%02x%02x%02x', $fgRGB->red(), $fgRGB->green(), $fgRGB->blue());
 		$text = $this->getAvatarText();
@@ -116,7 +120,7 @@ abstract class Avatar implements IAvatar {
 					return __DIR__ . '/../../../core/fonts/NotoSansSC-Regular.ttf';
 			}
 		}
-		return __DIR__ . '/../../../core/fonts/NotoSans-Regular.ttf';
+		return __DIR__ . '/../../../core/fonts/NotoSans-Bold.ttf';
 	}
 
 	/**
@@ -153,8 +157,7 @@ abstract class Avatar implements IAvatar {
 	 */
 	protected function generateAvatar(string $userDisplayName, int $size, bool $darkTheme): string {
 		$text = $this->getAvatarText();
-		$textColor = $this->avatarBackgroundColor($userDisplayName);
-		$backgroundColor = $textColor->alphaBlending(0.1, $darkTheme ? new Color(0, 0, 0) : new Color(255, 255, 255));
+		[$backgroundColor, $textColor] = $this->avatarColors($userDisplayName, $darkTheme);
 
 		$im = imagecreatetruecolor($size, $size);
 		if ($im === false) {
@@ -178,7 +181,8 @@ abstract class Avatar implements IAvatar {
 
 		$font = $this->getFont($text);
 
-		$fontSize = $size * 0.4;
+		// xcloud: same proportion as the SVG path, 190/280 of upstream's 0.4
+		$fontSize = $size * 0.27;
 		[$x, $y] = $this->imageTTFCenter(
 			$im, $text, $font, (int)$fontSize
 		);
@@ -250,6 +254,85 @@ abstract class Avatar implements IAvatar {
 		}
 		// chars in md5 goes up to f, hex:16
 		return intval($final % $maximum);
+	}
+
+	/**
+	 * xcloud: generated avatars are a filled circle in one Catppuccin accent,
+	 * as the design draws them — the pastel Mocha tone with dark initials in
+	 * the dark theme, the saturated Latte tone with white initials in the
+	 * light one. Upstream fills the circle with 10% of the colour over black
+	 * or white, which on the Catppuccin surfaces is the surface itself: the
+	 * circle disappears, only coloured letters remain, and in an avatar stack
+	 * the letters of neighbours run into each other.
+	 *
+	 * Each pair is [Mocha, Latte] of the same accent, so a person keeps their
+	 * colour when switching themes. Yellow and flamingo are left out: white
+	 * initials need their Latte tone darkened so far that it turns brown.
+	 */
+	private const XCLOUD_AVATAR_ACCENTS = [
+		['cba6f7', '8839ef'], // mauve
+		['89b4fa', '1e66f5'], // blue
+		['74c7ec', '209fb5'], // sapphire
+		['94e2d5', '179299'], // teal
+		['a6e3a1', '40a02b'], // green
+		['fab387', 'fe640b'], // peach
+		['f5c2e7', 'ea76cb'], // pink
+		['f38ba8', 'd20f39'], // red
+		['b4befe', '7287fd'], // lavender
+		['eba0ac', 'e64553'], // maroon
+	];
+
+	/** Catppuccin Mocha "crust": initials on the pastel circles */
+	private const XCLOUD_AVATAR_INK_DARK = '11111b';
+
+	/**
+	 * Background and text colour of a generated avatar.
+	 *
+	 * The light theme writes white initials; several Latte accents (peach,
+	 * yellow, green, teal…) are too light for white text, so the fill is
+	 * darkened towards black until the initials reach WCAG AA (4.5:1) — the
+	 * accent stays recognisable, the letters stay readable at 22 px.
+	 *
+	 * @return array{0: Color, 1: Color} [background, text]
+	 */
+	protected function avatarColors(string $hash, bool $darkTheme): array {
+		$hash = strtolower($hash);
+		if (preg_match('/^([0-9a-f]{4}-?){8}$/', $hash) !== 1) {
+			$hash = md5($hash);
+		}
+		$hash = preg_replace('/[^0-9a-f]+/', '', $hash);
+		// Not hashToInt(): it sums the hex digits, so the index clusters —
+		// three of the four lab users landed on the same accent. The leading
+		// 28 bits of the md5 are spread evenly.
+		$pair = self::XCLOUD_AVATAR_ACCENTS[hexdec(substr($hash, 0, 7)) % count(self::XCLOUD_AVATAR_ACCENTS)];
+
+		if ($darkTheme) {
+			return [self::hexColor($pair[0]), self::hexColor(self::XCLOUD_AVATAR_INK_DARK)];
+		}
+
+		$white = new Color(255, 255, 255);
+		$black = new Color(0, 0, 0);
+		$accent = self::hexColor($pair[1]);
+		$fill = $accent;
+		for ($share = 0.95; self::contrast($fill, $white) < 4.5 && $share > 0.4; $share -= 0.05) {
+			$fill = $accent->alphaBlending($share, $black);
+		}
+		return [$fill, $white];
+	}
+
+	private static function hexColor(string $hex): Color {
+		return new Color(hexdec(substr($hex, 0, 2)), hexdec(substr($hex, 2, 2)), hexdec(substr($hex, 4, 2)));
+	}
+
+	/** WCAG 2 contrast ratio of two opaque colours */
+	private static function contrast(Color $a, Color $b): float {
+		$luminance = static function (Color $c): float {
+			$channel = static fn (float $v): float => $v <= 0.03928 ? $v / 12.92 : (($v + 0.055) / 1.055) ** 2.4;
+			return 0.2126 * $channel($c->redF()) + 0.7152 * $channel($c->greenF()) + 0.0722 * $channel($c->blueF());
+		};
+		$la = $luminance($a);
+		$lb = $luminance($b);
+		return (max($la, $lb) + 0.05) / (min($la, $lb) + 0.05);
 	}
 
 	/**
