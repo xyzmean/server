@@ -88,7 +88,12 @@ class TemplateLayout {
 				// else folds into its «More» entry. Empty list = every app, stock order.
 				//   occ config:app:set core xcloud_rail_apps --value='["spreed","deck","tasks"]'
 				$railApps = json_decode($this->config->getAppValue('core', 'xcloud_rail_apps', '[]'), true);
-				$this->initialState->provideInitialState('core', 'railApps', is_array($railApps) ? array_values($railApps) : []);
+				$railApps = is_array($railApps) ? array_values($railApps) : [];
+				$this->initialState->provideInitialState('core', 'railApps', $railApps);
+				// The same list goes to the template: layout.user.php renders a static
+				// copy of the rail so it is on screen from the first frame, not after
+				// core-main mounts AppRail (60–700 ms later, measured).
+				$page->assign('railApps', $railApps);
 
 				$this->initialState->provideInitialState('unified-search', 'min-search-length', $this->appConfig->getValueInt(Application::APP_ID, ConfigLexicon::UNIFIED_SEARCH_MIN_SEARCH_LENGTH));
 				if ($this->config->getSystemValueBool('unified_search.enabled', false) || !$this->config->getSystemValueBool('enable_non-accessible_features', true)) {
@@ -116,6 +121,7 @@ class TemplateLayout {
 				$page->assign('navigation', $navigation);
 				$settingsNavigation = $this->navigationManager->getAll('settings');
 				$this->initialState->provideInitialState('core', 'settingsNavEntries', $settingsNavigation);
+				$page->assign('settingsNavigation', $settingsNavigation);
 
 				foreach ($navigation as $entry) {
 					if ($entry['active']) {

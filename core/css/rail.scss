@@ -101,22 +101,10 @@
 		}
 
 		&--active {
-			// A flat --color-primary-element-light reads as a second accent block;
-			// the design calls for a tint of the accent itself.
-			background-color: rgba(var(--color-primary-element-rgb), .14);
-
-			// Flush marker at the very edge of the rail: the item is 60px inside a
-			// 76px rail, so -8px lands it exactly on the viewport edge.
-			&::before {
-				content: '';
-				position: absolute;
-				inset-inline-start: -8px;
-				top: 14px;
-				width: 3px;
-				height: 26px;
-				border-radius: 0 3px 3px 0;
-				background-color: var(--color-primary-element);
-			}
+			// The tint and the edge marker live on .app-rail__indicator, not on
+			// the link: on a screen change the indicator alone slides from the old
+			// entry to the new one (a view transition, theme/shell.css) while the
+			// icons and labels stay put.
 
 			.app-rail__label {
 				font-weight: 600;
@@ -167,6 +155,58 @@
 	// «Приложения» on every screen — the entry read as selected while nothing
 	// was, and its muted label sat at 3.54 contrast on that plate instead of
 	// the 5.8 it has on the rail itself. Measured on the stand, not guessed.
+	// The selection «slider»: the accent tint over the whole entry plus a flush
+	// marker at the very edge of the rail (the item is 60px inside a 76px
+	// rail, so -8px lands it on the viewport edge). A separate element so that
+	// it, and nothing else, moves between entries on a screen change.
+	&__indicator {
+		position: absolute;
+		inset: 0;
+		border-radius: inherit;
+		// A flat --color-primary-element-light reads as a second accent block;
+		// the design calls for a tint of the accent itself.
+		background-color: rgba(var(--color-primary-element-rgb), .14);
+		pointer-events: none;
+
+		&::before {
+			content: '';
+			position: absolute;
+			inset-inline-start: -8px;
+			top: 50%;
+			width: 3px;
+			height: 26px;
+			transform: translateY(-50%);
+			border-radius: 0 3px 3px 0;
+			background-color: var(--color-primary-element);
+		}
+	}
+
+	// Icons and labels above the indicator: both are positioned, so paint order
+	// follows the markup and the indicator comes first.
+	&__link > :not(.app-rail__indicator) {
+		position: relative;
+	}
+
+	// The static copy of the rail (core/templates/layout.user.php) that is on
+	// screen until AppRail mounts: its logo is a copy of #nextcloud, and the
+	// places of the header nodes the live rail hosts are held at their size so
+	// nothing shifts when they arrive (measured on the live rail: tools 106px,
+	// avatar box 44px with a 36px avatar).
+	&__tools--reserved {
+		min-height: 106px;
+	}
+
+	&__user--reserved {
+		width: var(--app-rail-avatar-box);
+		height: var(--app-rail-avatar-box);
+	}
+
+	&__static-avatar {
+		width: 36px;
+		height: 36px;
+		border-radius: 50%;
+	}
+
 	&__link--more.app-rail__link {
 		border: none;
 		background: none;
@@ -322,7 +362,8 @@
  * unstyled and are dressed here.
  */
 
-#app-rail #nextcloud {
+#app-rail #nextcloud,
+#app-rail .app-rail__static-logo {
 	display: flex;
 	align-items: center;
 	justify-content: center;

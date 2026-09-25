@@ -17,6 +17,7 @@
 					:target="app.target ? '_blank' : undefined"
 					:rel="app.target ? 'noopener noreferrer' : undefined"
 					:aria-current="app.active ? 'page' : undefined">
+					<span v-if="app.active" class="app-rail__indicator" aria-hidden="true" />
 					<span class="app-rail__icon-wrapper">
 						<img
 							class="app-rail__icon"
@@ -41,6 +42,7 @@
 					aria-haspopup="menu"
 					:aria-expanded="moreOpen ? 'true' : 'false'"
 					@click="moreOpen = !moreOpen">
+					<span v-if="moreActive" class="app-rail__indicator" aria-hidden="true" />
 					<span class="app-rail__icon-wrapper">
 						<span class="app-rail__more-glyph" aria-hidden="true" />
 						<span v-if="moreUnread > 0" class="app-rail__badge">
@@ -80,6 +82,7 @@
 			:class="{ 'app-rail__link--active': settingsEntry.active }"
 			:href="settingsEntry.href"
 			:aria-current="settingsEntry.active ? 'page' : undefined">
+			<span v-if="settingsEntry.active" class="app-rail__indicator" aria-hidden="true" />
 			<span class="app-rail__icon-wrapper">
 				<img
 					class="app-rail__icon"
