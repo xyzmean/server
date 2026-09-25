@@ -115,7 +115,7 @@ p($theme->getTitle());
 			</a>
 			<?php } ?>
 			<div class="app-rail__user app-rail__user--reserved" aria-hidden="true">
-				<?php if ($_['user_uid']) { ?><img class="app-rail__static-avatar" src="<?php p(\OC::$server->getURLGenerator()->linkToRoute('core.avatar.getAvatar', ['userId' => $_['user_uid'], 'size' => 64])); ?>" alt="" width="36" height="36"><?php } ?>
+				<?php if ($_['user_uid']) { ?><img class="app-rail__static-avatar" src="<?php p(\OCP\Server::get(\OCP\IURLGenerator::class)->linkToRoute('core.avatar.getAvatar', ['userId' => $_['user_uid'], 'size' => 64])); ?>" alt="" width="36" height="36"><?php } ?>
 			</div>
 		</nav>
 		<?php // Prerender a rail entry while the pointer rests on it (Chrome's
