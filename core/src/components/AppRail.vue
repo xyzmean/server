@@ -149,7 +149,12 @@ export default defineComponent({
 			moreOpen: false,
 			// Personal settings, from the same initial state the user menu reads:
 			// already localized, already carrying the right target and active flag.
-			settingsEntry: settingsEntries.settings ?? null,
+			// For admins the cog opens «Настройки xcloud» — the product's own
+			// settings, where people look for them (the owner could not find the
+			// entry tucked into the avatar menu). Personal settings stay in the
+			// avatar menu. The entry exists only for admins (xcloud_settings
+			// registers it server-side), so everyone else keeps personal settings.
+			settingsEntry: settingsEntries.xcloud_settings ?? settingsEntries.settings ?? null,
 			// The entry ships a person glyph (settings/personal.svg), which right
 			// above the avatar reads as a second profile link rather than as
 			// settings — and the rail shows no label to correct that. Core's own
