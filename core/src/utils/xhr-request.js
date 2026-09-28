@@ -53,7 +53,12 @@ async function checkLoginStatus() {
 		const { status } = await window.fetch(generateUrl('/apps/files'))
 		if (status === 401) {
 			logger.warn('User session was terminated, forwarding to login page.')
-			await wipeBrowserStorages()
+			// The session ran out; the person did not log out. Keep the Chat's
+			// stores: its encryption keys live only in this browser, and wiping
+			// them makes the next login a new Matrix device that cannot read
+			// the conversation history. A different person logging in next is
+			// handled by the Chat's loader, which wipes a foreign session itself.
+			await wipeBrowserStorages({ keepChat: true })
 			window.location = generateUrl('/login?redirect_url={url}', {
 				url: window.location.pathname + window.location.search + window.location.hash,
 			})
@@ -66,16 +71,40 @@ async function checkLoginStatus() {
 }
 
 /**
+ * Storage of the embedded Chat (Element, xcloud_embed): its session, device id
+ * and encryption keys. Element keeps them in localStorage keys and IndexedDB
+ * databases of this same origin.
+ */
+const CHAT_KEY = /^(mx_|mxjssdk_|matrix-|xc_device_id$|xc_seeded_)/
+const CHAT_DB = /^(matrix-js-sdk|matrix-react-sdk$)/
+
+/**
  * Clear all Browser storages connected to current origin.
  *
+ * @param {object} [options] options
+ * @param {boolean} [options.keepChat] leave the embedded Chat's storage alone
  * @return {Promise<void>}
  */
-export async function wipeBrowserStorages() {
+export async function wipeBrowserStorages({ keepChat = false } = {}) {
 	try {
-		window.localStorage.clear()
+		if (keepChat) {
+			const keys = []
+			for (let i = 0; i < window.localStorage.length; i++) {
+				const key = window.localStorage.key(i)
+				if (key !== null && !CHAT_KEY.test(key)) {
+					keys.push(key)
+				}
+			}
+			keys.forEach((key) => window.localStorage.removeItem(key))
+		} else {
+			window.localStorage.clear()
+		}
 		window.sessionStorage.clear()
 		const indexedDBList = await window.indexedDB.databases()
 		for (const indexedDB of indexedDBList) {
+			if (keepChat && CHAT_DB.test(indexedDB.name)) {
+				continue
+			}
 			await window.indexedDB.deleteDatabase(indexedDB.name)
 		}
 		logger.debug('Browser storages cleared')
